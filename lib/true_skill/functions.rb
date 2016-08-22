@@ -2,7 +2,7 @@
 # "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
 # </script>
 module TrueSkill
-  BETA = 4.166666666666667
+  BETA = 50 / 6.0
 
   # Return a value that represents the perceived quality of the matchup between
   # the two teams, which is the calculated probability of a draw occuring
