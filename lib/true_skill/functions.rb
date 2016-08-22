@@ -7,7 +7,7 @@ module TrueSkill
   # Return a value that represents the perceived quality of the matchup between
   # the two teams, which is the calculated probability of a draw occuring
   # according to their ratings.
-  # @param [Array<Array<Gaussian>>] teams An array of the teams in the match
+  # @param [Array<Array<Rating>>] teams An array of the teams in the match
   # @return [Float] A value between *0* and *1* representing the quality
   # @see prob_draw
   def quality(teams)
@@ -47,7 +47,7 @@ module TrueSkill
 
   # Creates the mu vector, a vector of all the mean values for the players.
   #
-  # @param [Array<Array<Gaussian>>] teams An array of the teams in the match
+  # @param [Array<Array<Rating>>] teams An array of the teams in the match
   # @return [Matrix] The mu vector as a 1 column matrix
   # @see quality
   def mu_vector(teams)
@@ -65,7 +65,7 @@ module TrueSkill
   # 0 & 300 & 0 \\
   # 0 & 0 & 150 \end\{array}\right\vert$$
   #
-  # @param [Array<Array<Gaussian>>] teams An array of the teams in the match
+  # @param [Array<Array<Rating>>] teams An array of the teams in the match
   # @return [Matrix] The sigma matrix
   # @see quality
   def sigma_matrix(teams)
@@ -101,7 +101,7 @@ module TrueSkill
   # 0 & -1 \\
   # 0 & -1 \end\{array}\right\vert$$
   #
-  # @param [Array<Array<Gaussian>>] teams An array of the teams in the match
+  # @param [Array<Array<Rating>>] teams An array of the teams in the match
   # @return [Matrix] The a_matrix
   # @see quality
   def a_matrix(teams)
