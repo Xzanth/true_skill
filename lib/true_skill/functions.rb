@@ -7,6 +7,18 @@ module TrueSkill
   # Return a value that represents the perceived quality of the matchup between
   # the two teams, which is the calculated probability of a draw occuring
   # according to their ratings.
+  # @param [Array<Array<Gaussian>>] teams An array of the teams in the match
+  # @return [Float] A value between *0* and *1* representing the quality
+  # @see prob_draw
+  def quality(teams)
+    mu = mu_vector(teams)
+    sigma = sigma_matrix(teams)
+    a_matrix = a_matrix(teams)
+
+    prob_draw(mu, sigma, BETA, a_matrix)
+  end
+
+  # Calculates the probability of a draw occuring.
   #
   # The formula for this function is as follows:
   #
@@ -17,93 +29,97 @@ module TrueSkill
   # \mid\beta^{2}\mathbf\{A}^{\intercal}\mathbf\{A}+\mathbf\{A}^\{\intercal}
   # \Sigma\mathbf\{A}\mid}}$$
   #
-  # where, given an array of the players in the game from both teams:
-  #
-  # $$\mu$$ is a vector where each row corresponds to each player and the value
-  # in each row is that player's mean.
-  #
-  # $$\Sigma$$ is a matrix whereby the diagonal values are the variances of each
-  # of the players. Each value in the column and row of the corresponding
-  # player.
-  #
-  # e.g. When player 1 has variance *280*, player 2: *300* and player 3: *150*
-  #
-  # \$$\Sigma = \left| \begin\{array}\{ccc}
-  # 280 & 0 & 0 \\
-  # 0 & 300 & 0 \\
-  # 0 & 0 & 150 \end\{array}\right|$$
-  #
-  # $$\mathbf\{A}$$ is a vector where each row corresponds to each player and
-  # the value *1* indicates they are on team 1 and *-1* indicates they're on
-  # team 2.
-  #
-  # ##Initial variable creation:
-  #
-  # $$\mu$$ = mean_vector
-  #
-  # $$\Sigma$$ = variance_matrix
-  #
-  # $$\mathbf\{A}$$ = a_matrix
-  #
-  # $$\beta$$ = TrueSkill::BETA
-  #
-  # ##Intermediate variables:
-  #
-  # b2ata = $$\beta^{2}\mathbf\{A}^{\intercal}\mathbf\{A}$$
-  #
-  # atsa = $$\mathbf\{A}^{\intercal}\Sigma\mathbf\{A}$$
-  #
-  # mta = $$\mu^{\intercal}\mathbf\{A}$$
-  #
-  # atm = $$\mathbf\{A}^{\intercal}\mu$$
-  #
-  # middle = $$\beta^{2}\mathbf\{A}^{\intercal}\mathbf\{A} +
-  # \mathbf\{A}^{\intercal}\Sigma\mathbf\{A}$$
-  #
-  # ##Final variables:
-  #
-  # e_arg = $$-\frac\{1}\{2}\mu^{\intercal}\mathbf\{A}(\beta^{2}
-  # \mathbf\{A}^{\intercal}\mathbf\{A}+\mathbf\{A}^{\intercal}\Sigma
-  # \mathbf\{A})^\{-1}\mathbf\{A}^{\intercal}\mu$$
-  #
-  # s_arg = $$\frac\{\mid\beta^{2}\mathbf\{A}^{\intercal}\mathbf\{A}\mid}{
-  # \mid\beta^{2}\mathbf\{A}^{\intercal}\mathbf\{A}+\mathbf\{A}^\{\intercal}
-  # \Sigma\mathbf\{A}\mid}$$
-  #
-  # @param [Array<Gaussian>] team1 The first team in the comparison
-  # @param [Array<Gaussian>] team2 The second team in the comparison
-  # @return [Float] The probability of a draw between these two teams
-  def quality(team1, team2)
-    all_players = team1 + team2
-    num_players = all_players.length
-
-    mean_array = all_players.map(&:mu)
-    mean_vector = Matrix.column_vector(mean_array)
-
-    sigma_array = all_players.map(&:sigma)
-
-    variance_matrix = Matrix.build(num_players, num_players) do |row, col|
-      if row == col
-        sigma_array[row]**2
-      else
-        0
-      end
-    end
-
-    comparison_array = []
-    team1.each { comparison_array.push(1)  }
-    team2.each { comparison_array.push(-1) }
-    a_matrix = Matrix.column_vector(comparison_array)
-
-    rotated_a_matrix = a_matrix.t
-
-    b2ata = (BETA**2) * a_matrix.t * a_matrix
-    atsa  = rotated_a_matrix * variance_matrix * a_matrix
-    mta = mean_vector.t * a_matrix
-    atm = a_matrix.t * mean_vector
+  # @param [Matrix] mu {#mu_vector}
+  # @param [Matrix] sigma {#sigma_matrix}
+  # @param [Float] beta
+  # @param [Matrix] a_matrix {#a_matrix}
+  # @return [Float] The probability of a draw
+  def prob_draw(mu, sigma, beta, a_matrix)
+    b2ata = (beta**2) * a_matrix.t * a_matrix
+    atsa  = a_matrix.t * sigma * a_matrix
+    mta = mu.t * a_matrix
+    atm = a_matrix.t * mu
     middle = b2ata + atsa
     e_arg = (-0.5 * mta * middle.inverse * atm).det
     s_arg = b2ata.det / middle.det
     Math.exp(e_arg) * Math.sqrt(s_arg)
+  end
+
+  # Creates the mu vector, a vector of all the mean values for the players.
+  #
+  # @param [Array<Array<Gaussian>>] teams An array of the teams in the match
+  # @return [Matrix] The mu vector as a 1 column matrix
+  # @see quality
+  def mu_vector(teams)
+    mean_array = teams.flatten.map(&:mu)
+    Matrix.column_vector(mean_array)
+  end
+
+  # Creates the sigma matrix, a matrix where the diagonal values are the
+  # variances of each of the players.
+  #
+  # e.g. When player 1 has variance *280*, player 2: *300* and player 3: *150*
+  #
+  # $$\Sigma = \left\vert \begin\{array}\{ccc}
+  # 280 & 0 & 0 \\
+  # 0 & 300 & 0 \\
+  # 0 & 0 & 150 \end\{array}\right\vert$$
+  #
+  # @param [Array<Array<Gaussian>>] teams An array of the teams in the match
+  # @return [Matrix] The sigma matrix
+  # @see quality
+  def sigma_matrix(teams)
+    all_players = teams.flatten
+    variance_array = all_players.map { |r| r.sigma**2 }
+    Matrix.build(all_players.length) do |row, col|
+      if row == col
+        variance_array[row]
+      else
+        0
+      end
+    end
+  end
+
+  # Creates a matrix from teams that indicates which teams specific players
+  # belong to.
+  #
+  # The matrix has one less column than the number of teams and the same number
+  # of rows as players. Each column corresponds to a comparison between two
+  # teams so the first column compares the first two teams, the second column
+  # the second team and the third team and so on. Each row either contains the
+  # value *1* if the player belongs to the first team it is comparing, a *-1* if
+  # it belongs to the second, or a *0* if it belongs to neither.
+  #
+  # e.g. If team 1 contained players 1, 2 and 3, team 2: player 4 and team 3:
+  # players 5 and 6. Then a_matrix would produce the following matrix:
+  #
+  # $$\mathbf\{A} = \left\vert \begin\{array}\{cc}
+  # 1 & 0 \\
+  # 1 & 0 \\
+  # 1 & 0 \\
+  # -1 & 1 \\
+  # 0 & -1 \\
+  # 0 & -1 \end\{array}\right\vert$$
+  #
+  # @param [Array<Array<Gaussian>>] teams An array of the teams in the match
+  # @return [Matrix] The a_matrix
+  # @see quality
+  def a_matrix(teams)
+    compare = (1..teams.length - 1).map { |i| [teams[i - 1], teams[i]] }
+    all_players = teams.flatten
+    a_arrays = []
+    compare.each do |c|
+      column = all_players.map do |p|
+        if c[0].include?(p)
+          1
+        elsif c[1].include?(p)
+          -1
+        else
+          0
+        end
+      end
+      a_arrays.push(column)
+    end
+    Matrix.columns(a_arrays)
   end
 end
