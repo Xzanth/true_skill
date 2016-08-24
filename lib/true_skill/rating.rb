@@ -145,5 +145,9 @@ module TrueSkill
       return ArgumentError unless other.is_a?(Rating)
       @pi == other.pi and @tau == other.tau and @owner == other.owner
     end
+
+    def conservative
+      mu - (3 * sigma)
+    end
   end
 end
