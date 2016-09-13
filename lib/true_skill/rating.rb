@@ -1,6 +1,6 @@
 module TrueSkill
-  MU = 50
-  SIGMA = 50 / 3.0
+  MU = 25
+  SIGMA = 25 / 3.0
 
   # <script type="text/javascript" async src=
   # "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
@@ -36,8 +36,8 @@ module TrueSkill
         @pi  = arg[:sigma]**-2
         @tau = pi * arg[:mu]
       else
-        raise ArgumentError, "Gaussian hash should either include both pi and"\
-        " tau or both mu and sigma."
+        @pi  = 0
+        @tau = 0
       end
     end
 
